@@ -1,0 +1,34 @@
+# Быстрый старт: установка Solar Agents с помощью install-скрипта
+
+## 1. Загрузка и запуск скрипта
+
+Запустите эти команды поочередно в терминале на вашей Ubuntu 20.04/22.04/24.04 машине:
+
+```bash
+curl -O https://raw.githubusercontent.com/Vitek192/n8n/main/n8n-install.md
+chmod +x n8n-install.md
+./n8n-install.md
+```
+
+## 2. Следуйте инструкциям скрипта
+
+- Введите домен (например, `solar.yourdomain.com`).
+- Введите email для Let's Encrypt SSL.
+
+## 3. Запуск сервисов
+
+После завершения установки:
+```bash
+cd solar-agents
+docker compose up -d
+```
+
+## 4. Доступ к панели
+
+- Откройте в браузере ваш указанный домен.
+- Вход по логину/паролю, указанным при установке.
+
+---
+
+**Примечание:**  
+Скрипт автоматически установит Docker, Docker Compose, Node.js, npm, Python, n8n, n8n-mcp и все необходимые зависимости.
