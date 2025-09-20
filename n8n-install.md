@@ -111,9 +111,10 @@ setup_configuration() {
     N8N_API_KEY=$(openssl rand -base64 32)
     MCP_AUTH_TOKEN=$(openssl rand -base64 32)
     GRAFANA_PASSWORD=$(openssl rand -base64 16)
+    REDIS_PASSWORD=$(openssl rand -base64 16)
     
     # Создание .env файла
-    cat > .env << EOF
+    cat > .env <<EOF
 # Domain Configuration
 DOMAIN_NAME=${DOMAIN#*.}
 SUBDOMAIN=${DOMAIN%%.*}
@@ -136,10 +137,13 @@ MCP_AUTH_TOKEN=$MCP_AUTH_TOKEN
 # Monitoring
 GRAFANA_PASSWORD=$GRAFANA_PASSWORD
 
+# Redis
+REDIS_PASSWORD=$REDIS_PASSWORD
+
 # Timezone
 GENERIC_TIMEZONE=Europe/Moscow
 EOF
-    
+
     print_success "Конфигурация создана"
 }
 
@@ -147,7 +151,7 @@ EOF
 create_docker_compose() {
     print_header "Создание Docker Compose конфигурации"
     
-    cat > docker-compose.yml << 'EOF'
+    cat > docker-compose.yml <<EOF
 version: '3.8'
 
 services:
@@ -164,7 +168,7 @@ services:
       - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
       - "--entrypoints.websecure.address=:443"
       - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"
-      - "--certificatesresolvers.letsencrypt.acme.email=${SSL_EMAIL}"
+      - "--certificatesresolvers.letsencrypt.acme.email=\${SSL_EMAIL}"
       - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
     ports:
       - "80:80"
@@ -181,8 +185,8 @@ services:
     container_name: holographic-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_USER: \${POSTGRES_USER}
+      POSTGRES_PASSWORD: \${POSTGRES_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./sql/init.sql:/docker-entrypoint-initdb.d/01-init.sql
@@ -193,7 +197,7 @@ services:
     image: redis:7-alpine
     container_name: holographic-redis
     restart: unless-stopped
-    command: redis-server --requirepass ${REDIS_PASSWORD}
+    command: redis-server --requirepass \${REDIS_PASSWORD}
     volumes:
       - redis_data:/data
     networks:
@@ -204,14 +208,14 @@ services:
     container_name: holographic-n8n
     restart: unless-stopped
     environment:
-      - N8N_HOST=${SUBDOMAIN}.${DOMAIN_NAME}
+      - N8N_HOST=\${SUBDOMAIN}.\${DOMAIN_NAME}
       - N8N_PROTOCOL=https
       - DB_TYPE=postgresdb
       - DB_POSTGRESDB_HOST=postgres
-      - DB_POSTGRESDB_USER=${POSTGRES_USER}
-      - DB_POSTGRESDB_PASSWORD=${POSTGRES_PASSWORD}
-      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
-      - N8N_API_KEY=${N8N_API_KEY}
+      - DB_POSTGRESDB_USER=\${POSTGRES_USER}
+      - DB_POSTGRESDB_PASSWORD=\${POSTGRES_PASSWORD}
+      - N8N_ENCRYPTION_KEY=\${N8N_ENCRYPTION_KEY}
+      - N8N_API_KEY=\${N8N_API_KEY}
     volumes:
       - n8n_data:/home/node/.n8n
       - ./workflows:/home/node/.n8n/workflows
@@ -230,3 +234,16 @@ volumes:
 networks:
   holographic-network:
     driver: bridge
+EOF
+
+}
+
+main() {
+    check_system
+    install_docker
+    setup_configuration
+    create_docker_compose
+    print_success "Установка завершена! Перейдите в директорию проекта и запустите: docker compose up -d"
+}
+
+main
